@@ -40,7 +40,7 @@ If the SamFTP website administrators make changes and break things, you may need
 
 ## How it works
 
-The SamFTP Rclone Updater script is written in Python and uses various libraries to perform its tasks. It utilizes the requests library to fetch the SamFTP website, and the lxml library to parse the HTML on the page and extract relevant information using specified XPath values. The script connects to an SQLite database to check if a link is already in the database. If yes, it compares the old link with the new link and updates the link in the database, then updates the rclone configuration file (rclone.conf) with the new URL. It sends notifications to a Telegram channel using the Telegram Bot API with the information about the updated URL. The script uses the TELEGRAM_CHAT_ID and TELEGRAM_BOT_API_KEY environment variables to send notifications to the Telegram chat.
+The SamFTP Rclone Updater script is written in Python and uses various libraries to perform its tasks. It utilizes the requests library to fetch the SamFTP website, and the lxml library to parse the HTML on the page and extract relevant information using specified XPath values. The script connects to an SQLite database to check if a link is already in the database. If yes, it compares the old link with the new link and updates the link in the database, then updates the rclone configuration file (rclone.conf) with the new URL. It sends notifications to a Telegram channel using the [Telegram Bot API](https://core.telegram.org/bots/api) with the information about the updated URL. The script uses the TELEGRAM_CHAT_ID and TELEGRAM_BOT_API_KEY environment variables to send notifications to the Telegram chat.
 
 ## Credit
 
