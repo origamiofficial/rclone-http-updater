@@ -13,7 +13,7 @@ TELEGRAM_CHAT_ID = "XXXXXXXXXXXXXX"
 TELEGRAM_BOT_API_KEY = "XXXXXXXXXX:XXX-XXXXXXXXXXXXXXXXXXXX_XXXXXXXXXX"
 
 # URL and XPath information for SamFTP page
-WEBSITE_URL = "http://1.3.16.50.5/"
+WEBSITE_URL = "http://172.16.50.5/"
 LINK_XPATH = "//li/a[@class='hvr-bounce-to-bottom']/@href"
 HYPERTEXT_XPATH = "//li/a[@class='hvr-bounce-to-bottom']/text()"
 
