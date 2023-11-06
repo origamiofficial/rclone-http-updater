@@ -17,8 +17,11 @@ WEBSITE_URL = "http://172.16.50.5/"
 LINK_XPATH = "//li/a[@class='hvr-bounce-to-bottom']/@href"
 HYPERTEXT_XPATH = "//li/a[@class='hvr-bounce-to-bottom']/text()"
 
+# Detect the current user's home directory
+user = os.path.expanduser("~")
+
 # Rclone configuration file
-RCLONE_CONF_FILE = "/home/user/.config/rclone/rclone.conf"
+RCLONE_CONF_FILE = os.path.join(user, ".config", "rclone", "rclone.conf")
 
 # SQLite database information
 DB_NAME = "samftp_links.db"
