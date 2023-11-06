@@ -213,6 +213,24 @@ if database_updated:
 else:
     print("Database is up-to-date.")
 
+# Collect old URL values from rclone.conf
+old_urls = {}
+
+for hypertext in updated_items:
+    rclone_name = name_mappings.get(hypertext, hypertext)
+    old_url = None
+
+    # Find the old URL in the rclone.conf file
+    found_section = False  # Flag to track if the section has been found
+    for i, line in enumerate(rclone_conf_lines):
+        if f"[{rclone_name}]" in line:
+            found_section = True
+        if found_section and line.startswith("url"):
+            old_url = line.split(" = ")[1].strip()
+            break
+
+    old_urls[hypertext] = old_url
+
 # Update the "url" values in the rclone.conf file from the database
 updated_rclone_conf = check_rclone_conf_up_to_date(rclone_conf_lines, c, name_mappings)
 
@@ -227,9 +245,17 @@ if updated_rclone_conf:
 else:
     print("Rclone config is up-to-date.")
 
-# Send notification via Telegram for each updated post
+# Send notification via Telegram using the collected old URLs
 for hypertext in updated_items:
-    message = f"Attention, SamFTP's {hypertext} has been updated."
+    new_url = None
+    for item_hypertext, item_url in website_posts:
+        if item_hypertext == hypertext:
+            new_url = item_url
+            break
+
+    old_url = old_urls.get(hypertext, "URL not found")
+
+    message = f"Attention, SamFTP's {hypertext} has been updated.\n\nOld URL: {old_url}\nNew URL: {new_url}"
     send_telegram_notification(TELEGRAM_CHAT_ID, TELEGRAM_BOT_API_KEY, message)
     print(f"Notification sent via Telegram for {hypertext}.")
 
