@@ -46,6 +46,34 @@ except requests.ConnectionError as e:
     print(f"SamFTP website is down: {e}. Exiting script.")
     exit()
 
+def check_xpath(tree, xpaths):
+    invalid_xpaths = []
+    for xpath_name, xpath in xpaths.items():
+        element_name = xpath.split("/")[-1]
+        elements = tree.xpath(xpath)
+        if len(elements) == 0:
+            invalid_xpaths.append((xpath_name, element_name))
+    return invalid_xpaths
+
+try:
+    page = requests.get(WEBSITE_URL)
+    tree = html.fromstring(page.content)
+    xpaths = {
+        "LINK_XPATH": LINK_XPATH,
+        "HYPERTEXT_XPATH": HYPERTEXT_XPATH
+    }
+    invalid_xpaths = check_xpath(tree, xpaths)
+    if invalid_xpaths:
+        print(f"Error: Invalid XPath expressions found:")
+        for xpath_name, element_name in invalid_xpaths:
+            print(f"{xpath_name}: No {element_name} found")
+        print("XPath expressions may need to be updated. Exiting script.")
+        exit()
+except Exception as e:
+    print(f"Error checking XPath expressions: {e}. XPath expressions may need to be updated. Exiting script.")
+    exit()
+print("All XPath expressions are valid.")
+
 # Define a function to fetch post data from the website
 def fetch_posts_data():
     try:
