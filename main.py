@@ -94,7 +94,7 @@ def check_rclone_conf_up_to_date(rclone_conf_lines, database, name_mappings):
                     if not line.strip().endswith(new_url):
                         # Check if the URL is different
                         rclone_conf_lines[i] = f"url = {new_url}\n"
-                        print(f"Link for {hypertext} updated in rclone.conf.")
+                        print(f"URL for {hypertext} updated in rclone.conf.")
                         rclone_conf_updated = True  # Set the flag to indicate an update
                     # Reset the flag after checking or updating
                     update_url = False
@@ -185,6 +185,7 @@ website_posts = fetch_posts_data(WEBSITE_URL, LINK_XPATH, HYPERTEXT_XPATH)
 updated_items = set()
 
 # Iterate through website posts and update the database
+database_updated = False # Flag to check if database has been updated
 for hypertext, link in website_posts:
     if hypertext in previously_updated_hypertexts:
         # The item has been previously updated, check if the link is different
@@ -196,6 +197,7 @@ for hypertext, link in website_posts:
             conn.commit()
             print(f"Link for {hypertext} has been updated in the database.")
             updated_items.add(hypertext)  # Add to the set of updated items
+            database_updated = True  # Set the flag to indicate a database update
     else:
         # New post, add it to the database
         c.execute("INSERT INTO {} VALUES (?, ?)".format(DB_TABLE_NAME), (hypertext, link))
@@ -203,6 +205,13 @@ for hypertext, link in website_posts:
         print(f"New post for {hypertext} has been added to the database.")
         previously_updated_hypertexts.add(hypertext)
         updated_items.add(hypertext)  # Add to the set of updated items
+        database_updated = True  # Set the flag to indicate a database update
+
+# Check if the database is up-to-date or updated
+if database_updated:
+    print("Database has been updated.")
+else:
+    print("Database is up-to-date.")
 
 # Update the "url" values in the rclone.conf file from the database
 updated_rclone_conf = check_rclone_conf_up_to_date(rclone_conf_lines, c, name_mappings)
