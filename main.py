@@ -116,14 +116,20 @@ try:
             print(f"{xpath_name}: No elements found for {xpath}")
         print("XPath expressions may need to be updated. Exiting script.")
         exit()
+    num_items_found = len(tree.xpath(HYPERTEXT_XPATH))
+    print(f"All XPath expressions are valid and found {num_items_found} items.")
 except requests.exceptions.RequestException as e:
     print(f"Error checking XPath expressions: {e}. XPath expressions may need to be updated. Exiting script.")
     exit()
-print("All XPath expressions are valid.")
 
 # Check if database file exists
 if os.path.exists(DB_NAME):
     print("Existing SQLite database file found.")
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM {}".format(DB_TABLE_NAME))
+    num_items_in_db = c.fetchone()[0]
+    print(f"{num_items_in_db} items found in the database.")
 else:
     print("Existing SQLite database file not found, created one")
 
@@ -208,3 +214,4 @@ except IOError as e:
 # Close connection to the database
 conn.close()
 print("Connection to the database closed.")
+print("Script completed.")
