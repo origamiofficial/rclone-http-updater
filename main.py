@@ -5,7 +5,7 @@ import os
 import re
 
 # Script version
-SCRIPT_VERSION = "1.1"
+SCRIPT_VERSION = "1.2"
 SCRIPT_URL = "https://raw.githubusercontent.com/origamiofficial/samftp-rclone-updater/main/main.py"
 
 # Telegram information
