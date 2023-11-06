@@ -75,7 +75,9 @@ def send_telegram_notification(chat_id, bot_api_key, message):
     except requests.exceptions.RequestException as e:
         print(f"Error sending Telegram notification: {e}")
 
-def update_rclone_conf(rclone_conf_lines, database, name_mappings):
+def check_rclone_conf_up_to_date(rclone_conf_lines, database, name_mappings):
+    rclone_conf_updated = False  # Flag to check if rclone.conf has been updated
+
     for hypertext, rclone_name in name_mappings.items():
         c.execute("SELECT link FROM {} WHERE hypertext=?".format(DB_TABLE_NAME), (hypertext,))
         result = c.fetchone()
@@ -89,12 +91,20 @@ def update_rclone_conf(rclone_conf_lines, database, name_mappings):
                     update_url = True
                 elif update_url and line.startswith("url"):
                     # Update the "url" value if the flag is set
-                    rclone_conf_lines[i] = f"url = {new_url}\n"
-                    print(f"Link for {hypertext} updated in rclone.conf.")
-                    # Reset the flag after updating
+                    if not line.strip().endswith(new_url):
+                        # Check if the URL is different
+                        rclone_conf_lines[i] = f"url = {new_url}\n"
+                        print(f"Link for {hypertext} updated in rclone.conf.")
+                        rclone_conf_updated = True  # Set the flag to indicate an update
+                    # Reset the flag after checking or updating
                     update_url = False
         else:
             print(f"No URL found in the database for {hypertext}. Skipping update.")
+
+    if rclone_conf_updated:
+        return rclone_conf_lines
+    else:
+        return None  # Return None if no updates were made
 
 # Check if SamFTP website is up
 if not is_website_up(WEBSITE_URL):
@@ -195,21 +205,24 @@ for hypertext, link in website_posts:
         updated_items.add(hypertext)  # Add to the set of updated items
 
 # Update the "url" values in the rclone.conf file from the database
-update_rclone_conf(rclone_conf_lines, c, name_mappings)
+updated_rclone_conf = check_rclone_conf_up_to_date(rclone_conf_lines, c, name_mappings)
+
+if updated_rclone_conf:
+    # If updates were made, write the updated rclone.conf file
+    try:
+        with open(RCLONE_CONF_FILE, "w") as f:
+            f.writelines(updated_rclone_conf)
+        print("rclone.conf file updated.")
+    except IOError as e:
+        print(f"Error writing updated rclone.conf file: {e}")
+else:
+    print("Rclone config is up-to-date.")
 
 # Send notification via Telegram for each updated post
 for hypertext in updated_items:
     message = f"Attention, SamFTP's {hypertext} has been updated."
     send_telegram_notification(TELEGRAM_CHAT_ID, TELEGRAM_BOT_API_KEY, message)
     print(f"Notification sent via Telegram for {hypertext}.")
-
-# Write updated rclone.conf file
-try:
-    with open(RCLONE_CONF_FILE, "w") as f:
-        f.writelines(rclone_conf_lines)
-    print("rclone.conf file updated.")
-except IOError as e:
-    print(f"Error writing updated rclone.conf file: {e}")
 
 # Close connection to the database
 conn.close()
