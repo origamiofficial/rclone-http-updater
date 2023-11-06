@@ -37,54 +37,89 @@ name_mappings = {
     "English Movies": "English",
 }
 
-# Check if SamFTP website is up
-print("Checking if SamFTP website is up...")
-try:
-    requests.get(WEBSITE_URL)
-    print("SamFTP website is up.")
-except requests.ConnectionError as e:
-    print(f"SamFTP website is down: {e}. Exiting script.")
-    exit()
+def is_website_up(url):
+    print("Checking if SamFTP website is up...")
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        print("SamFTP website is up.")
+        return True
+    except requests.exceptions.RequestException as e:
+        print(f"Error: Unable to access the website ({url}): {e}")
+        return False
 
-def check_xpath(tree, xpaths):
+def check_valid_xpaths(tree, xpaths):
     invalid_xpaths = []
     for xpath_name, xpath in xpaths.items():
-        element_name = xpath.split("/")[-1]
         elements = tree.xpath(xpath)
         if len(elements) == 0:
-            invalid_xpaths.append((xpath_name, element_name))
+            invalid_xpaths.append((xpath_name, xpath))
     return invalid_xpaths
 
+def fetch_posts_data(url, link_xpath, hypertext_xpath):
+    try:
+        page = requests.get(url)
+        page.raise_for_status()
+        tree = html.fromstring(page.content)
+        links = tree.xpath(link_xpath)
+        hypertexts = tree.xpath(hypertext_xpath)
+        return list(zip(hypertexts, links))
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching posts data: {e}")
+        return []
+
+def send_telegram_notification(chat_id, bot_api_key, message):
+    try:
+        response = requests.get(f"https://api.telegram.org/bot{bot_api_key}/sendMessage?chat_id={chat_id}&text={message}")
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending Telegram notification: {e}")
+
+def update_rclone_conf(rclone_conf_lines, database, name_mappings):
+    for hypertext, rclone_name in name_mappings.items():
+        c.execute("SELECT link FROM {} WHERE hypertext=?".format(DB_TABLE_NAME), (hypertext,))
+        result = c.fetchone()
+        if result:
+            new_url = result[0]
+            # Initialize a flag to determine whether to update the "url" value
+            update_url = False
+            for i, line in enumerate(rclone_conf_lines):
+                if re.search(f"\[{rclone_name}\]", line):
+                    # When a section is found, set the flag to update the "url" value
+                    update_url = True
+                elif update_url and line.startswith("url"):
+                    # Update the "url" value if the flag is set
+                    rclone_conf_lines[i] = f"url = {new_url}\n"
+                    print(f"Link for {hypertext} updated in rclone.conf.")
+                    # Reset the flag after updating
+                    update_url = False
+        else:
+            print(f"No URL found in the database for {hypertext}. Skipping update.")
+
+# Check if SamFTP website is up
+if not is_website_up(WEBSITE_URL):
+    exit()
+
+# Check XPath expressions
 try:
     page = requests.get(WEBSITE_URL)
+    page.raise_for_status()
     tree = html.fromstring(page.content)
     xpaths = {
         "LINK_XPATH": LINK_XPATH,
         "HYPERTEXT_XPATH": HYPERTEXT_XPATH
     }
-    invalid_xpaths = check_xpath(tree, xpaths)
+    invalid_xpaths = check_valid_xpaths(tree, xpaths)
     if invalid_xpaths:
-        print(f"Error: Invalid XPath expressions found:")
-        for xpath_name, element_name in invalid_xpaths:
-            print(f"{xpath_name}: No {element_name} found")
+        print("Error: Invalid XPath expressions found:")
+        for xpath_name, xpath in invalid_xpaths:
+            print(f"{xpath_name}: No elements found for {xpath}")
         print("XPath expressions may need to be updated. Exiting script.")
         exit()
-except Exception as e:
+except requests.exceptions.RequestException as e:
     print(f"Error checking XPath expressions: {e}. XPath expressions may need to be updated. Exiting script.")
     exit()
 print("All XPath expressions are valid.")
-
-# Define a function to fetch post data from the website
-def fetch_posts_data():
-    try:
-        page = requests.get(WEBSITE_URL)
-        tree = html.fromstring(page.content)
-        links = tree.xpath(LINK_XPATH)
-        hypertexts = tree.xpath(HYPERTEXT_XPATH)
-        return list(zip(hypertexts, links))
-    except Exception as e:
-        print(f"Error fetching posts data: {e}")
-        return []
 
 # Check if database file exists
 if os.path.exists(DB_NAME):
@@ -98,8 +133,8 @@ try:
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     print("Connection to database successful.")
-except Exception as e:
-    print(f"Error connecting to the database: {e}. Exiting script.")
+except sqlite3.Error as e:
+    print(f"Error connecting to the database: {e}")
     exit()
 
 # Check if links table exists in the database, and create it if it doesn't
@@ -109,16 +144,16 @@ try:
             DB_TABLE_NAME
         )
     )
-except Exception as e:
-    print(f"Error creating table: {e}. Exiting script.")
+except sqlite3.Error as e:
+    print(f"Error creating table: {e}")
     exit()
 
 # Read rclone.conf file
 try:
     with open(RCLONE_CONF_FILE, "r") as f:
         rclone_conf_lines = f.readlines()
-except Exception as e:
-    print(f"Error reading rclone.conf file: {e}. Exiting script.")
+except FileNotFoundError as e:
+    print(f"Error reading rclone.conf file: {e}")
     exit()
 
 # Fetch previously updated hypertexts from the database
@@ -128,7 +163,7 @@ for row in c.fetchall():
     previously_updated_hypertexts.add(row[0])
 
 # Fetch post data from the website
-website_posts = fetch_posts_data()
+website_posts = fetch_posts_data(WEBSITE_URL, LINK_XPATH, HYPERTEXT_XPATH)
 
 # Create a set to keep track of items that have been updated or added
 updated_items = set()
@@ -154,40 +189,20 @@ for hypertext, link in website_posts:
         updated_items.add(hypertext)  # Add to the set of updated items
 
 # Update the "url" values in the rclone.conf file from the database
-for hypertext, rclone_name in name_mappings.items():
-    c.execute("SELECT link FROM {} WHERE hypertext=?".format(DB_TABLE_NAME), (hypertext,))
-    result = c.fetchone()
-    if result:
-        new_url = result[0]
-        # Initialize a flag to determine whether to update the "url" value
-        update_url = False
-        for i, line in enumerate(rclone_conf_lines):
-            if re.search(f"\[{rclone_name}\]", line):
-                # When a section is found, set the flag to update the "url" value
-                update_url = True
-            elif update_url and line.startswith("url"):
-                # Update the "url" value if the flag is set
-                rclone_conf_lines[i] = f"url = {new_url}\n"
-                print(f"Link for {hypertext} updated in rclone.conf.")
-                # Reset the flag after updating
-                update_url = False
-    else:
-        print(f"No URL found in the database for {hypertext}. Skipping update.")
+update_rclone_conf(rclone_conf_lines, c, name_mappings)
 
 # Send notification via Telegram for each updated post
 for hypertext in updated_items:
-    try:
-        requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_API_KEY}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text=Attention, SamFTP's {hypertext} has been updated.")
-        print(f"Notification sent via Telegram for {hypertext}.")
-    except Exception as e:
-        print(f"Error sending notification via Telegram: {e}")
+    message = f"Attention, SamFTP's {hypertext} has been updated."
+    send_telegram_notification(TELEGRAM_CHAT_ID, TELEGRAM_BOT_API_KEY, message)
+    print(f"Notification sent via Telegram for {hypertext}.")
 
 # Write updated rclone.conf file
 try:
     with open(RCLONE_CONF_FILE, "w") as f:
         f.writelines(rclone_conf_lines)
     print("rclone.conf file updated.")
-except Exception as e:
+except IOError as e:
     print(f"Error writing updated rclone.conf file: {e}")
 
 # Close connection to the database
