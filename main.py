@@ -38,6 +38,7 @@ name_mappings = {
     "Hindi Movies": "Hindi",
     "English Movies -1080p ": "English1080",
     "English Movies": "English",
+    "Documentary": "Documentary",
 }
 
 def is_website_up(url):
