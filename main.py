@@ -70,7 +70,7 @@ def fetch_posts_data(url, link_xpath, hypertext_xpath):
 
 def send_telegram_notification(chat_id, bot_api_key, message):
     try:
-        response = requests.get(f"https://api.telegram.org/bot{bot_api_key}/sendMessage?chat_id={chat_id}&text={message}")
+        response = requests.get(f"https://api.telegram.org/bot{bot_api_key}/sendMessage?chat_id={chat_id}&text={message}&disable_web_page_preview=true&parse_mode=HTML")
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f"Error sending Telegram notification: {e}")
@@ -105,6 +105,33 @@ def check_rclone_conf_up_to_date(rclone_conf_lines, database, name_mappings):
         return rclone_conf_lines
     else:
         return None  # Return None if no updates were made
+
+def send_notification_for_mapped_items(updated_items, website_posts):
+    for hypertext in updated_items:
+        rclone_name = name_mappings.get(hypertext, hypertext)
+        new_url = None
+        old_url = None
+
+        # Find the new URL for the updated item
+        for item_hypertext, item_url in website_posts:
+            if item_hypertext == hypertext:
+                new_url = item_url
+                break
+
+        # Find the old URL in the rclone.conf file
+        for i, line in enumerate(rclone_conf_lines):
+            if f"[{rclone_name}]" in line:
+                for j in range(i, len(rclone_conf_lines)):
+                    if re.match(r"url\s*=\s*", rclone_conf_lines[j]):
+                        old_url = rclone_conf_lines[j].split("=")[1].strip()
+                        break
+                break
+
+        if old_url is not None and new_url is not None and old_url != new_url:
+            # Send notification only if the old and new URLs are different
+            message = f"Attention, SamFTP's <b>{hypertext}</b> has been updated.\n\n<b>Old URL:</b> {old_url}\n<b>New URL:</b> {new_url}"
+            send_telegram_notification(TELEGRAM_CHAT_ID, TELEGRAM_BOT_API_KEY, message)
+            print(f"Notification sent via Telegram for {hypertext}.")
 
 # Check if SamFTP website is up
 if not is_website_up(WEBSITE_URL):
@@ -185,7 +212,7 @@ website_posts = fetch_posts_data(WEBSITE_URL, LINK_XPATH, HYPERTEXT_XPATH)
 updated_items = set()
 
 # Iterate through website posts and update the database
-database_updated = False # Flag to check if database has been updated
+database_updated = False  # Flag to check if database has been updated
 for hypertext, link in website_posts:
     if hypertext in previously_updated_hypertexts:
         # The item has been previously updated, check if the link is different
@@ -210,6 +237,7 @@ for hypertext, link in website_posts:
 # Check if the database is up-to-date or updated
 if database_updated:
     print("Database has been updated.")
+    send_notification_for_mapped_items(updated_items, website_posts)
 else:
     print("Database is up-to-date.")
 
@@ -244,20 +272,6 @@ if updated_rclone_conf:
         print(f"Error writing updated rclone.conf file: {e}")
 else:
     print("Rclone config is up-to-date.")
-
-# Send notification via Telegram using the collected old URLs
-for hypertext in updated_items:
-    new_url = None
-    for item_hypertext, item_url in website_posts:
-        if item_hypertext == hypertext:
-            new_url = item_url
-            break
-
-    old_url = old_urls.get(hypertext, "URL not found")
-
-    message = f"Attention, SamFTP's {hypertext} has been updated.\n\nOld URL: {old_url}\nNew URL: {new_url}"
-    send_telegram_notification(TELEGRAM_CHAT_ID, TELEGRAM_BOT_API_KEY, message)
-    print(f"Notification sent via Telegram for {hypertext}.")
 
 # Close connection to the database
 conn.close()
