@@ -26,9 +26,14 @@ A Python script that updates rclone configuration file (rclone.conf) with the la
 ```bash
 pip install -r requirements.txt
 ```
+3. Set the `WEBSITE_URL` environment variable with the website you want to fetch.
+4. Set the `TELEGRAM_CHAT_ID` and `TELEGRAM_BOT_API_KEY` environment variables with your Telegram chat ID and bot API key.
+5. Change the `name_mappings` according to your setup
+```
+"Website Hypertext": "Rclone Remote Name",
+```
 
-3. Set the TELEGRAM_CHAT_ID and TELEGRAM_BOT_API_KEY environment variables with your Telegram chat ID and bot API key.
-4. Run the script using the following command:
+6. Run the script using the following command:
 
 ```bash
 python main.py
