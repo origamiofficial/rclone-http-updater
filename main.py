@@ -6,13 +6,13 @@ import re
 
 # Script version
 SCRIPT_VERSION = "1.5"
-SCRIPT_URL = "https://raw.githubusercontent.com/origamiofficial/samftp-rclone-updater/main/main.py"
+SCRIPT_URL = "https://raw.githubusercontent.com/origamiofficial/rclone-http-updater/main/main.py"
 
 # Telegram information
 TELEGRAM_CHAT_ID = "XXXXXXXXXXXXXX"
 TELEGRAM_BOT_API_KEY = "XXXXXXXXXX:XXX-XXXXXXXXXXXXXXXXXXXX_XXXXXXXXXX"
 
-# URL and XPath information for SamFTP page
+# URL and XPath information of the website
 WEBSITE_URL = "http://172.16.50.5/"
 LINK_XPATH = "//li/a[@class='hvr-bounce-to-bottom']/@href"
 HYPERTEXT_XPATH = "//li/a[@class='hvr-bounce-to-bottom']/text()"
@@ -24,7 +24,7 @@ user = os.path.expanduser("~")
 RCLONE_CONF_FILE = os.path.join(user, ".config", "rclone", "rclone.conf")
 
 # SQLite database information
-DB_NAME = "samftp_links.db"
+DB_NAME = "rclone_links.db"
 DB_TABLE_NAME = "links"
 
 # Mapping of HTML names to RCLONE.CONF names
@@ -42,11 +42,11 @@ name_mappings = {
 }
 
 def is_website_up(url):
-    print("Checking if SamFTP website is up...")
+    print("Checking if the website is up...")
     try:
         response = requests.get(url)
         response.raise_for_status()
-        print("SamFTP website is up.")
+        print("The website is up.")
         return True
     except requests.exceptions.RequestException as e:
         print(f"Error: Unable to access the website ({url}): {e}")
@@ -133,11 +133,11 @@ def send_notification_for_mapped_items(updated_items, website_posts):
 
         if old_url is not None and new_url is not None and old_url != new_url:
             # Send notification only if the old and new URLs are different
-            message = f"Attention, SamFTP's <b>{hypertext}</b> has been updated.\n\n<b>Old URL:</b> {old_url}\n<b>New URL:</b> {new_url}"
+            message = f"Attention, Website's <b>{hypertext}</b> has been updated.\n\n<b>Old URL:</b> {old_url}\n<b>New URL:</b> {new_url}"
             send_telegram_notification(TELEGRAM_CHAT_ID, TELEGRAM_BOT_API_KEY, message)
             print(f"Notification sent via Telegram for {hypertext}.")
 
-# Check if SamFTP website is up
+# Check if the website is up
 if not is_website_up(WEBSITE_URL):
     exit()
 
