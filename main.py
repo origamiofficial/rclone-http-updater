@@ -12,10 +12,13 @@ SCRIPT_URL = "https://raw.githubusercontent.com/origamiofficial/rclone-http-upda
 TELEGRAM_CHAT_ID = "XXXXXXXXXXXXXX"
 TELEGRAM_BOT_API_KEY = "XXXXXXXXXX:XXX-XXXXXXXXXXXXXXXXXXXX_XXXXXXXXXX"
 
-# URL and XPath information of the website
-WEBSITE_URL = "http://172.16.50.5/"
+# URLs and XPath information of the website
+WEBSITE_URLS = ["http://172.16.50.4", "http://172.16.50.5", "http://172.16.50.7", "http://172.16.50.9", "http://172.16.50.10", "http://172.16.50.14"]
 LINK_XPATH = "//li/a[@class='hvr-bounce-to-bottom']/@href"
 HYPERTEXT_XPATH = "//li/a[@class='hvr-bounce-to-bottom']/text()"
+
+# Run post command immediately after updating rclone.conf
+POST_COMMAND = "echo HI"
 
 # Detect the current user's home directory
 user = os.path.expanduser("~")
@@ -41,16 +44,22 @@ name_mappings = {
     "Documentary": "Documentary",
 }
 
-def is_website_up(url):
-    print("Checking if the website is up...")
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        print("The website is up.")
-        return True
-    except requests.exceptions.RequestException as e:
-        print(f"Error: Unable to access the website ({url}): {e}")
-        return False
+WEBSITE_URL = None # Do not change this
+def is_website_up(urls):
+    for url in urls:
+        global WEBSITE_URL  # Use the global WEBSITE_URL variable
+        WEBSITE_URL = url  # Set WEBSITE_URL for the current iteration
+        print(f"Checking if the website ({WEBSITE_URL}) is up...")
+        try:
+            response = requests.get(WEBSITE_URL, timeout=30)  # Set a 30-second timeout for each URL
+            response.raise_for_status()
+            print(f"The website ({WEBSITE_URL}) is up.")
+            return True
+        except requests.exceptions.RequestException as e:
+            print(f"Error: Unable to access the website ({WEBSITE_URL}): {e}")
+            continue  # Move on to the next URL
+    print("All websites are down.")
+    return False
 
 def check_valid_xpaths(tree, xpaths):
     invalid_xpaths = []
@@ -138,7 +147,7 @@ def send_notification_for_mapped_items(updated_items, website_posts):
             print(f"Notification sent via Telegram for {hypertext}.")
 
 # Check if the website is up
-if not is_website_up(WEBSITE_URL):
+if not is_website_up(WEBSITE_URLS):
     exit()
 
 # Check XPath expressions
@@ -272,6 +281,7 @@ if updated_rclone_conf:
         with open(RCLONE_CONF_FILE, "w") as f:
             f.writelines(updated_rclone_conf)
         print("rclone.conf file updated.")
+        os.system(POST_COMMAND)
     except IOError as e:
         print(f"Error writing updated rclone.conf file: {e}")
 else:
