@@ -1,13 +1,15 @@
 # Rclone HTTP Remote URL Updater
 
-A Python script that updates rclone [HTTP Remote](https://rclone.org/http/) configuration file (rclone.conf) with the latest URLs from specified website using XPath, and notifies via Telegram if changes are detected.
+A Python script that updates rclone [HTTP Remote](https://rclone.org/http/) configuration file (rclone.conf) with the latest URLs from specified websites using XPath, and notifies via Telegram if changes are detected.
 
 ## Features
 
+- Supports multiple websites as a fallback.
 - Automatically checks if the website is up and running.
 - Verifies the correctness of XPath expressions used to extract data from the website.
 - Stores information about the website links in an SQLite database to track updates.
 - Updates the rclone configuration file (rclone.conf) with the latest URLs from the website.
+- Executes customizable post-update command only after the rclone.conf updates.
 - Notifies specified Telegram channel about updates using the Telegram Bot API.
 
 ## Requirements
@@ -26,14 +28,15 @@ A Python script that updates rclone [HTTP Remote](https://rclone.org/http/) conf
 ```bash
 pip install -r requirements.txt
 ```
-3. Set the `WEBSITE_URL` environment variable with the website you want to fetch.
+3. Set the `WEBSITE_URLS` environment variable with the website/s you want to fetch.
 4. Set the `TELEGRAM_CHAT_ID` and `TELEGRAM_BOT_API_KEY` environment variables with your Telegram chat ID and bot API key.
-5. Change the `name_mappings` according to your setup
+5. Set the `POST_COMMAND` with the command you want to execute only after update.
+6. Change the `name_mappings` according to your setup
 ```
 "Website Hypertext": "Rclone Remote Name",
 ```
 
-6. Run the script using the following command:
+7. Run the script using the following command:
 
 ```bash
 python main.py
