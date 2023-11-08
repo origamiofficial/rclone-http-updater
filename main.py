@@ -5,7 +5,7 @@ import os
 import re
 
 # Script version
-SCRIPT_VERSION = "1.5"
+SCRIPT_VERSION = "1.6"
 SCRIPT_URL = "https://raw.githubusercontent.com/origamiofficial/rclone-http-updater/main/main.py"
 
 # Telegram information
